@@ -1,0 +1,26 @@
+# Core dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+yfinance>=0.2.36
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.18.0
+
+# Machine Learning (for optional regime filter)
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# Jupyter
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# Streamlit app
+streamlit>=1.29.0
+
+# Data handling
+pyarrow>=14.0.0  # For parquet support
+
+# Code quality (optional)
+ruff>=0.1.0
