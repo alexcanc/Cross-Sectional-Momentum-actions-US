@@ -38,6 +38,7 @@ Cross-Sectional-Momentum-actions-US/
 │   └── 04_regime_filter.ipynb
 ├── report/
 │   └── research_report.ipynb     # Final research paper (PDF-exportable)
+├── app.py                        # Streamlit dashboard
 ├── requirements.txt
 └── README.md
 ```
@@ -56,6 +57,46 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 ```
+
+## Streamlit Dashboard
+
+Launch the interactive dashboard:
+
+```bash
+streamlit run app.py
+```
+
+The dashboard allows you to:
+- Adjust strategy parameters in real-time
+- Visualize performance and risk metrics
+- Explore the momentum signal and current positions
+- Understand the methodology with built-in explanations
+
+**Deploy online**: Push to GitHub and connect to [Streamlit Cloud](https://streamlit.io/cloud) for free hosting.
+
+## Machine Learning Model
+
+Train the ML regime filter locally:
+
+```bash
+# Basic training
+python train_model.py
+
+# Force fresh data download
+python train_model.py --fresh
+
+# Custom training period
+python train_model.py --train-end 2020-12-31
+```
+
+The script will:
+1. Download latest market data
+2. Compute features (momentum, volatility, trend)
+3. Train Logistic Regression model
+4. Save model + metrics to `models/`
+5. Generate training report
+
+Models are saved with timestamps for version tracking.
 
 ## Quick Start
 

@@ -1,1 +1,115 @@
+# =============================================================================
+# CROSS-SECTIONAL MOMENTUM STRATEGY - GITIGNORE
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CLAUDE / AI
+# -----------------------------------------------------------------------------
 .claude
+
+# -----------------------------------------------------------------------------
+# PYTHON
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+
+# -----------------------------------------------------------------------------
+# DATA (régénéré automatiquement via yfinance)
+# -----------------------------------------------------------------------------
+data/*.parquet
+data/*.csv
+data/*.pkl
+
+# -----------------------------------------------------------------------------
+# MODELS (garder uniquement latest pour le déploiement)
+# -----------------------------------------------------------------------------
+# Ignorer les anciens modèles versionnés
+models/regime_model_*.pkl
+models/regime_model_*_metadata.json
+models/training_report_*.txt
+models/walk_forward_report_*.txt
+models/walk_forward_results.png
+
+# Garder le dernier modèle (pour Streamlit Cloud)
+!models/latest_model.pkl
+!models/latest_metadata.json
+
+# -----------------------------------------------------------------------------
+# JUPYTER NOTEBOOKS
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# -----------------------------------------------------------------------------
+# IDE / EDITEURS
+# -----------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+.docs
+
+# -----------------------------------------------------------------------------
+# OS
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# LOGS & CACHE
+# -----------------------------------------------------------------------------
+*.log
+*.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# -----------------------------------------------------------------------------
+# DOCUMENTS PRIVES (notes de presentation)
+# -----------------------------------------------------------------------------
+docs/
+
+# -----------------------------------------------------------------------------
+# SECRETS (ne jamais commit!)
+# -----------------------------------------------------------------------------
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+secrets.yaml

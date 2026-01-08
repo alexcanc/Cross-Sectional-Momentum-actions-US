@@ -11,6 +11,8 @@ from .signal import compute_momentum_signal, rank_momentum
 from .backtest import run_backtest, BacktestResult
 from .metrics import compute_metrics, compute_annual_returns
 from .regime_filter import compute_regime_filter, apply_regime_filter
+from .ml_regime import compute_ml_regime_signal, MLRegimeModel, get_feature_importance
+from .walk_forward import run_walk_forward, WalkForwardAnalysis
 
 __version__ = "1.0.0"
 __author__ = "Your Name"
