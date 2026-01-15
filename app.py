@@ -1,7 +1,8 @@
 """
-Streamlit Dashboard - Cross-Sectional Momentum Strategy
+Cross-Sectional Momentum Strategy Dashboard
+Imperial College London - Quantitative Research Project
 
-Lancez l'application avec: streamlit run app.py
+Run with: streamlit run app.py
 """
 
 import streamlit as st
@@ -9,105 +10,318 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from datetime import datetime
 
-# Import des modules du projet
+# Project modules
 from src.data_loader import load_universe_data, load_benchmark_data, load_benchmark_daily
-from src.signal import compute_momentum_signal, get_long_short_positions
+from src.signal import compute_momentum_signal
 from src.backtest import run_backtest, compute_drawdowns
 from src.regime_filter import compute_regime_filter
 from src.ml_regime import compute_ml_regime_signal, get_feature_importance
 from src.metrics import compute_metrics, compute_annual_returns
 from src.config import Config
 
-# Configuration de la page
+# =============================================================================
+# PAGE CONFIGURATION
+# =============================================================================
 st.set_page_config(
-    page_title="Momentum Strategy",
-    page_icon="📈",
+    page_title="Momentum Strategy | Quant Research",
+    page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Style personnalisé
+# =============================================================================
+# CUSTOM CSS - Modern Professional Design
+# =============================================================================
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 0;
+    /* Import Google Font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    /* Global Styles */
+    .stApp {
+        font-family: 'Inter', sans-serif;
     }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        margin-top: 0;
+
+    /* Hero Section */
+    .hero-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2.5rem 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        color: white;
     }
+
+    .hero-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 400;
+    }
+
+    /* Metric Cards */
     .metric-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
-    .explanation-box {
-        background-color: #e8f4f8;
-        border-left: 4px solid #1f77b4;
-        padding: 15px;
-        margin: 15px 0;
-        border-radius: 0 10px 10px 0;
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .metric-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+    }
+
+    .metric-positive { color: #10b981; }
+    .metric-negative { color: #ef4444; }
+    .metric-neutral { color: #667eea; }
+
+    /* Info Box */
+    .info-box {
+        background: #f8fafc;
+        border-left: 4px solid #667eea;
+        padding: 1rem 1.25rem;
+        border-radius: 0 8px 8px 0;
+        margin: 1rem 0;
+        font-size: 0.95rem;
+        color: #374151;
+    }
+
+    .info-box strong {
+        color: #1f2937;
+    }
+
+    /* Section Headers */
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    /* Stock List */
+    .stock-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .stock-ticker {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .stock-momentum-positive { color: #10b981; font-weight: 500; }
+    .stock-momentum-negative { color: #ef4444; font-weight: 500; }
+
+    /* Footer */
+    .footer {
+        text-align: center;
+        padding: 2rem 0;
+        color: #9ca3af;
+        font-size: 0.85rem;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 3rem;
+    }
+
+    .footer a {
+        color: #667eea;
+        text-decoration: none;
+    }
+
+    /* Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* Sidebar */
+    .sidebar-section {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .sidebar-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Hide Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .hero-title { font-size: 1.75rem; }
+        .metric-value { font-size: 1.5rem; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=3600)
+# =============================================================================
+# DATA LOADING
+# =============================================================================
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_data():
-    """Charge les données avec cache."""
+    """Load and cache market data."""
     prices = load_universe_data(verbose=False)
     benchmark = load_benchmark_data(verbose=False)
     benchmark_daily = load_benchmark_daily(verbose=False)
     return prices, benchmark, benchmark_daily
 
 
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+def format_percentage(value, decimals=2):
+    """Format a value as percentage."""
+    return f"{value * 100:.{decimals}f}%"
+
+
+def format_ratio(value, decimals=2):
+    """Format a ratio value."""
+    return f"{value:.{decimals}f}"
+
+
+def render_metric_card(value, label, format_type="percentage", color_class="neutral"):
+    """Render a styled metric card."""
+    if format_type == "percentage":
+        formatted = format_percentage(value)
+    else:
+        formatted = format_ratio(value)
+
+    return f"""
+    <div class="metric-card">
+        <div class="metric-value metric-{color_class}">{formatted}</div>
+        <div class="metric-label">{label}</div>
+    </div>
+    """
+
+
+# =============================================================================
+# MAIN APPLICATION
+# =============================================================================
 def main():
-    # Header
-    st.markdown('<p class="main-header">📈 Cross-Sectional Momentum</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Stratégie quantitative sur actions US (Dow Jones 30)</p>', unsafe_allow_html=True)
+    # =========================================================================
+    # HERO SECTION
+    # =========================================================================
+    st.markdown("""
+    <div class="hero-container">
+        <div class="hero-title">Cross-Sectional Momentum Strategy</div>
+        <div class="hero-subtitle">Quantitative Research on US Equities (Dow Jones 30)</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    # =========================================================================
+    # SIDEBAR - Strategy Configuration
+    # =========================================================================
+    with st.sidebar:
+        st.markdown("## Strategy Configuration")
 
-    # Sidebar - Configuration
-    st.sidebar.header("⚙️ Configuration")
+        st.markdown('<div class="sidebar-title">Signal Parameters</div>', unsafe_allow_html=True)
+        lookback = st.slider(
+            "Lookback Period (months)",
+            min_value=6, max_value=24, value=12,
+            help="Number of months to calculate momentum return"
+        )
+        skip = st.slider(
+            "Skip Period (months)",
+            min_value=0, max_value=3, value=1,
+            help="Recent months to exclude (avoids short-term reversal)"
+        )
 
-    # Paramètres de la stratégie
-    st.sidebar.subheader("Signal")
-    lookback = st.sidebar.slider("Lookback (mois)", 6, 24, 12, help="Période de calcul du momentum")
-    skip = st.sidebar.slider("Skip (mois)", 0, 3, 1, help="Mois récent à exclure")
+        st.markdown("---")
+        st.markdown('<div class="sidebar-title">Portfolio Construction</div>', unsafe_allow_html=True)
+        n_long = st.slider("Long Positions", min_value=3, max_value=15, value=10)
+        n_short = st.slider("Short Positions", min_value=0, max_value=15, value=10)
+        portfolio_type = "long_short" if n_short > 0 else "long_only"
 
-    st.sidebar.subheader("Portefeuille")
-    n_long = st.sidebar.slider("Nombre Long", 5, 15, 10)
-    n_short = st.sidebar.slider("Nombre Short", 0, 15, 10)
-    portfolio_type = "long_short" if n_short > 0 else "long_only"
+        st.markdown("---")
+        st.markdown('<div class="sidebar-title">Transaction Costs</div>', unsafe_allow_html=True)
+        transaction_cost = st.slider(
+            "Cost (basis points)",
+            min_value=0, max_value=50, value=10,
+            help="Round-trip transaction cost per trade"
+        )
 
-    st.sidebar.subheader("Coûts")
-    transaction_cost = st.sidebar.slider("Coût transaction (bps)", 0, 50, 10)
+        st.markdown("---")
+        st.markdown('<div class="sidebar-title">Regime Filter</div>', unsafe_allow_html=True)
+        regime_type = st.radio(
+            "Filter Type",
+            options=["None", "SMA 200 (Trend)", "Machine Learning"],
+            index=1,
+            help="Market regime detection method"
+        )
 
-    st.sidebar.subheader("Filtre de régime")
-    regime_type = st.sidebar.radio(
-        "Type de filtre",
-        ["Aucun", "SMA200 (baseline)", "Machine Learning"],
-        index=1
-    )
-    risk_off_exposure = st.sidebar.slider(
-        "Exposition Risk-Off", 0.0, 1.0, 0.5,
-        disabled=(regime_type == "Aucun")
-    )
+        if regime_type != "None":
+            risk_off_exposure = st.slider(
+                "Risk-Off Exposure",
+                min_value=0.0, max_value=1.0, value=0.5, step=0.1,
+                help="Portfolio exposure during bearish regime"
+            )
+        else:
+            risk_off_exposure = 0.5
 
-    if regime_type == "Machine Learning":
-        ml_train_end = st.sidebar.text_input("Fin période train", "2018-12-31")
+        if regime_type == "Machine Learning":
+            ml_train_end = st.text_input(
+                "Training End Date",
+                value="2018-12-31",
+                help="End date for ML model training period"
+            )
 
-    # Chargement des données
-    with st.spinner("Chargement des données..."):
-        prices, benchmark, benchmark_daily = load_data()
+    # =========================================================================
+    # DATA LOADING & PROCESSING
+    # =========================================================================
+    with st.spinner("Loading market data..."):
+        try:
+            prices, benchmark, benchmark_daily = load_data()
+        except Exception as e:
+            st.error(f"Error loading data: {str(e)}")
+            st.info("Please check your internet connection and try again.")
+            return
 
     # Configuration
     config = Config()
@@ -119,350 +333,537 @@ def main():
     config.TRANSACTION_COST_BPS = transaction_cost
     config.RISK_OFF_EXPOSURE = risk_off_exposure
 
-    # Calcul du régime
+    # Regime computation
     regime = None
     ml_model = None
 
-    if regime_type == "SMA200 (baseline)":
+    if regime_type == "SMA 200 (Trend)":
         regime = compute_regime_filter(benchmark_daily, config)
     elif regime_type == "Machine Learning":
-        with st.spinner("Entraînement du modèle ML..."):
-            regime, ml_model = compute_ml_regime_signal(benchmark_daily, train_end=ml_train_end)
+        with st.spinner("Training ML model..."):
+            try:
+                regime, ml_model = compute_ml_regime_signal(benchmark_daily, train_end=ml_train_end)
+            except Exception as e:
+                st.warning(f"ML model training failed: {str(e)}. Using SMA 200 as fallback.")
+                regime = compute_regime_filter(benchmark_daily, config)
 
     # Backtest
-    results = run_backtest(prices, benchmark, config, regime_signal=regime)
-    metrics = compute_metrics(
-        results.strategy_returns,
-        results.cumulative_returns,
-        results.turnover,
-        results.transaction_costs
-    )
+    try:
+        results = run_backtest(prices, benchmark, config, regime_signal=regime)
+        metrics = compute_metrics(
+            results.strategy_returns,
+            results.cumulative_returns,
+            results.turnover,
+            results.transaction_costs
+        )
+    except Exception as e:
+        st.error(f"Backtest error: {str(e)}")
+        return
 
-    # Tabs
+    # =========================================================================
+    # KEY METRICS DISPLAY
+    # =========================================================================
+    st.markdown('<div class="section-header">Key Performance Metrics</div>', unsafe_allow_html=True)
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        color = "positive" if metrics.cagr > 0 else "negative"
+        st.markdown(render_metric_card(metrics.cagr, "CAGR", "percentage", color), unsafe_allow_html=True)
+
+    with col2:
+        color = "positive" if metrics.sharpe_ratio > 1 else ("neutral" if metrics.sharpe_ratio > 0.5 else "negative")
+        st.markdown(render_metric_card(metrics.sharpe_ratio, "Sharpe Ratio", "ratio", color), unsafe_allow_html=True)
+
+    with col3:
+        color = "negative" if metrics.max_drawdown < -0.3 else ("neutral" if metrics.max_drawdown < -0.15 else "positive")
+        st.markdown(render_metric_card(metrics.max_drawdown, "Max Drawdown", "percentage", color), unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(render_metric_card(metrics.volatility, "Volatility", "percentage", "neutral"), unsafe_allow_html=True)
+
+    with col5:
+        color = "positive" if metrics.sortino_ratio > 1.5 else "neutral"
+        st.markdown(render_metric_card(metrics.sortino_ratio, "Sortino Ratio", "ratio", color), unsafe_allow_html=True)
+
+    # =========================================================================
+    # TABS
+    # =========================================================================
+    st.markdown("<br>", unsafe_allow_html=True)
+
     if ml_model is not None:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Performance", "🔬 Signal", "📉 Risque", "🤖 ML", "📚 Méthodologie"])
+        tabs = st.tabs(["📈 Performance", "📊 Signal Analysis", "⚠️ Risk Metrics", "🤖 ML Model", "📖 Methodology"])
+        tab_perf, tab_signal, tab_risk, tab_ml, tab_method = tabs
     else:
-        tab1, tab2, tab3, tab4 = st.tabs(["📊 Performance", "🔬 Signal", "📉 Risque", "📚 Méthodologie"])
+        tabs = st.tabs(["📈 Performance", "📊 Signal Analysis", "⚠️ Risk Metrics", "📖 Methodology"])
+        tab_perf, tab_signal, tab_risk, tab_method = tabs
+        tab_ml = None
 
-    # TAB 1: Performance
-    with tab1:
-        st.header("Performance de la stratégie")
+    # =========================================================================
+    # TAB 1: PERFORMANCE
+    # =========================================================================
+    with tab_perf:
+        st.markdown("### Cumulative Performance")
 
-        # Métriques clés
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("CAGR", f"{metrics.cagr:.2%}")
-        with col2:
-            st.metric("Sharpe Ratio", f"{metrics.sharpe_ratio:.2f}")
-        with col3:
-            st.metric("Max Drawdown", f"{metrics.max_drawdown:.2%}")
-        with col4:
-            st.metric("Volatilité", f"{metrics.volatility:.2%}")
-
-        # Graphique de performance
-        st.subheader("Performance cumulée")
-
+        # Performance chart
         fig = go.Figure()
+
         fig.add_trace(go.Scatter(
             x=results.cumulative_returns.index,
             y=results.cumulative_returns.values,
-            name="Stratégie",
-            line=dict(width=2, color='#1f77b4')
+            name="Momentum Strategy",
+            line=dict(width=2.5, color='#667eea'),
+            hovertemplate='%{x}<br>Strategy: $%{y:.2f}<extra></extra>'
         ))
+
         fig.add_trace(go.Scatter(
             x=results.cumulative_benchmark.index,
             y=results.cumulative_benchmark.values,
-            name="S&P 500",
-            line=dict(width=2, color='gray', dash='dash')
+            name="S&P 500 Benchmark",
+            line=dict(width=2, color='#9ca3af', dash='dot'),
+            hovertemplate='%{x}<br>Benchmark: $%{y:.2f}<extra></extra>'
         ))
 
         fig.update_layout(
             yaxis_type="log",
-            yaxis_title="Croissance de $1",
+            yaxis_title="Growth of $1 (Log Scale)",
             xaxis_title="",
             hovermode='x unified',
-            height=400,
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+            height=450,
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            ),
+            margin=dict(l=60, r=40, t=60, b=40),
+            yaxis=dict(gridcolor='#f0f0f0', zerolinecolor='#e5e7eb'),
+            xaxis=dict(gridcolor='#f0f0f0')
         )
+
         st.plotly_chart(fig, use_container_width=True)
 
-        # Explication
         st.markdown("""
-        <div class="explanation-box">
-        <strong>💡 Lecture du graphique:</strong><br>
-        Le graphique montre la croissance de 1$ investi au début de la période.
-        L'échelle logarithmique permet de comparer les rendements proportionnels.
+        <div class="info-box">
+            <strong>Reading the Chart:</strong> The logarithmic scale shows proportional returns over time.
+            A value of 2 means your initial investment has doubled. The strategy is compared against
+            a passive S&P 500 investment.
         </div>
         """, unsafe_allow_html=True)
 
-        # Rendements annuels
-        st.subheader("Rendements annuels")
+        # Annual returns
+        st.markdown("### Annual Returns Comparison")
+
         annual = compute_annual_returns(results.strategy_returns)
         annual_bench = compute_annual_returns(results.benchmark_returns)
 
         annual_df = pd.DataFrame({
-            'Stratégie': annual,
+            'Strategy': annual,
             'S&P 500': annual_bench
         })
 
-        fig2 = px.bar(annual_df, barmode='group',
-                      color_discrete_sequence=['#1f77b4', 'gray'])
+        fig2 = go.Figure()
+
+        fig2.add_trace(go.Bar(
+            x=annual_df.index.astype(str),
+            y=annual_df['Strategy'],
+            name='Momentum Strategy',
+            marker_color='#667eea'
+        ))
+
+        fig2.add_trace(go.Bar(
+            x=annual_df.index.astype(str),
+            y=annual_df['S&P 500'],
+            name='S&P 500',
+            marker_color='#d1d5db'
+        ))
+
         fig2.update_layout(
-            yaxis_title="Rendement",
-            xaxis_title="Année",
+            barmode='group',
+            yaxis_title="Annual Return",
+            xaxis_title="Year",
             height=350,
-            yaxis_tickformat='.0%'
+            yaxis_tickformat='.0%',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            ),
+            yaxis=dict(gridcolor='#f0f0f0'),
+            margin=dict(l=60, r=40, t=60, b=40)
         )
+
         st.plotly_chart(fig2, use_container_width=True)
 
-    # TAB 2: Signal
-    with tab2:
-        st.header("Signal Momentum")
+    # =========================================================================
+    # TAB 2: SIGNAL ANALYSIS
+    # =========================================================================
+    with tab_signal:
+        st.markdown("### Current Momentum Rankings")
 
-        # Calcul du momentum
-        momentum = compute_momentum_signal(prices, lookback, skip)
-
-        # Explication
         st.markdown("""
-        <div class="explanation-box">
-        <strong>📐 Formule du signal:</strong><br>
-        <code>Momentum = Prix(t-1) / Prix(t-12) - 1</code><br><br>
-        Le signal mesure le rendement sur les 12 derniers mois, en excluant le mois le plus récent
-        pour éviter l'effet de mean reversion à court terme.
+        <div class="info-box">
+            <strong>Momentum Signal (12-1):</strong> Calculated as the 12-month return excluding
+            the most recent month. This avoids short-term mean reversion effects that can
+            contaminate the momentum signal.
         </div>
         """, unsafe_allow_html=True)
 
-        # Dernier classement
-        st.subheader("Classement actuel")
+        # Calculate momentum
+        momentum = compute_momentum_signal(prices, lookback, skip)
         last_date = momentum.dropna().index[-1]
         last_momentum = momentum.loc[last_date].sort_values(ascending=False)
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("**🟢 Positions LONG (Top 10)**")
+            st.markdown("#### Long Positions (Winners)")
             long_stocks = last_momentum.head(n_long)
+
             for ticker, mom in long_stocks.items():
-                st.write(f"• **{ticker}**: {mom:.2%}")
+                color_class = "positive" if mom > 0 else "negative"
+                st.markdown(f"""
+                <div class="stock-item">
+                    <span class="stock-ticker">{ticker}</span>
+                    <span class="stock-momentum-{color_class}">{format_percentage(mom)}</span>
+                </div>
+                """, unsafe_allow_html=True)
 
         with col2:
             if n_short > 0:
-                st.markdown("**🔴 Positions SHORT (Bottom 10)**")
+                st.markdown("#### Short Positions (Losers)")
                 short_stocks = last_momentum.tail(n_short)
-                for ticker, mom in short_stocks.items():
-                    st.write(f"• **{ticker}**: {mom:.2%}")
 
-        # Distribution du momentum
-        st.subheader("Distribution du momentum")
-        fig3 = px.histogram(last_momentum.values, nbins=15,
-                           labels={'value': 'Momentum', 'count': 'Nombre d\'actions'})
-        fig3.update_layout(height=300, showlegend=False)
+                for ticker, mom in short_stocks.items():
+                    color_class = "positive" if mom > 0 else "negative"
+                    st.markdown(f"""
+                    <div class="stock-item">
+                        <span class="stock-ticker">{ticker}</span>
+                        <span class="stock-momentum-{color_class}">{format_percentage(mom)}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown("#### Long-Only Strategy")
+                st.info("Short selling is disabled. The strategy only takes long positions in high-momentum stocks.")
+
+        # Distribution chart
+        st.markdown("### Momentum Distribution")
+
+        fig3 = go.Figure()
+
+        fig3.add_trace(go.Histogram(
+            x=last_momentum.values,
+            nbinsx=15,
+            marker_color='#667eea',
+            opacity=0.8,
+            hovertemplate='Momentum: %{x:.1%}<br>Count: %{y}<extra></extra>'
+        ))
+
+        fig3.update_layout(
+            xaxis_title="Momentum Score",
+            yaxis_title="Number of Stocks",
+            height=300,
+            xaxis_tickformat='.0%',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            showlegend=False,
+            yaxis=dict(gridcolor='#f0f0f0'),
+            margin=dict(l=60, r=40, t=20, b=40)
+        )
+
         st.plotly_chart(fig3, use_container_width=True)
 
-    # TAB 3: Risque
-    with tab3:
-        st.header("Analyse des risques")
+        st.caption(f"Data as of {last_date.strftime('%B %Y')}")
 
-        # Drawdowns
-        st.subheader("Drawdowns")
+    # =========================================================================
+    # TAB 3: RISK METRICS
+    # =========================================================================
+    with tab_risk:
+        st.markdown("### Drawdown Analysis")
+
         drawdowns = compute_drawdowns(results.cumulative_returns)
 
         fig4 = go.Figure()
+
         fig4.add_trace(go.Scatter(
             x=drawdowns.index,
             y=drawdowns.values,
             fill='tozeroy',
-            fillcolor='rgba(255,0,0,0.2)',
-            line=dict(color='red'),
-            name='Drawdown'
+            fillcolor='rgba(239, 68, 68, 0.2)',
+            line=dict(color='#ef4444', width=1.5),
+            name='Drawdown',
+            hovertemplate='%{x}<br>Drawdown: %{y:.1%}<extra></extra>'
         ))
-        fig4.add_hline(y=-0.2, line_dash="dash", line_color="orange",
-                       annotation_text="Bear Market (-20%)")
-        fig4.update_layout(
-            yaxis_title="Drawdown",
-            height=350,
-            yaxis_tickformat='.0%'
+
+        fig4.add_hline(
+            y=-0.2,
+            line_dash="dash",
+            line_color="#f59e0b",
+            annotation_text="Bear Market Threshold (-20%)",
+            annotation_position="bottom right"
         )
+
+        fig4.update_layout(
+            yaxis_title="Drawdown from Peak",
+            xaxis_title="",
+            height=350,
+            yaxis_tickformat='.0%',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            showlegend=False,
+            yaxis=dict(gridcolor='#f0f0f0'),
+            margin=dict(l=60, r=40, t=20, b=40)
+        )
+
         st.plotly_chart(fig4, use_container_width=True)
 
-        # Métriques de risque
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Max Drawdown", f"{metrics.max_drawdown:.2%}")
-        with col2:
-            st.metric("Sortino Ratio", f"{metrics.sortino_ratio:.2f}")
-        with col3:
-            st.metric("Calmar Ratio", f"{metrics.calmar_ratio:.2f}")
-
-        # Explication
         st.markdown("""
-        <div class="explanation-box">
-        <strong>📊 Définitions:</strong><br>
-        • <strong>Drawdown</strong>: Baisse depuis le plus haut historique<br>
-        • <strong>Sortino</strong>: Sharpe ajusté pour la volatilité baissière uniquement<br>
-        • <strong>Calmar</strong>: CAGR / Max Drawdown
+        <div class="info-box">
+            <strong>Understanding Drawdowns:</strong> A drawdown measures the decline from a
+            historical peak. It represents the maximum loss an investor would have experienced
+            if they bought at the peak and sold at the trough.
         </div>
         """, unsafe_allow_html=True)
 
-        # Turnover
-        st.subheader("Turnover et coûts")
-        col1, col2 = st.columns(2)
+        # Risk metrics cards
+        st.markdown("### Risk-Adjusted Metrics")
+
+        col1, col2, col3, col4 = st.columns(4)
+
         with col1:
-            st.metric("Turnover mensuel moyen", f"{metrics.avg_turnover:.1%}")
+            st.metric("Max Drawdown", format_percentage(metrics.max_drawdown))
         with col2:
-            st.metric("Coûts totaux (sur la période)", f"{metrics.total_transaction_costs:.2%}")
+            st.metric("Sortino Ratio", format_ratio(metrics.sortino_ratio))
+        with col3:
+            st.metric("Calmar Ratio", format_ratio(metrics.calmar_ratio))
+        with col4:
+            st.metric("Hit Rate", format_percentage(metrics.hit_rate))
 
-    # TAB 4: ML (si activé)
-    if ml_model is not None:
-        with tab4:
-            st.header("Modèle Machine Learning")
+        # Turnover analysis
+        st.markdown("### Portfolio Turnover & Costs")
 
-            # Métriques du modèle
-            st.subheader("Performance du modèle")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Avg Monthly Turnover", format_percentage(metrics.avg_turnover, 1))
+        with col2:
+            st.metric("Total Transaction Costs", format_percentage(metrics.total_transaction_costs))
+        with col3:
+            annual_cost = metrics.total_transaction_costs / (len(results.strategy_returns) / 12)
+            st.metric("Annualized Cost Impact", format_percentage(annual_cost))
+
+    # =========================================================================
+    # TAB 4: ML MODEL (if enabled)
+    # =========================================================================
+    if tab_ml is not None and ml_model is not None:
+        with tab_ml:
+            st.markdown("### Machine Learning Regime Filter")
+
+            st.markdown("""
+            <div class="info-box">
+                <strong>About the ML Model:</strong> A Logistic Regression classifier trained to
+                predict market regime (Risk-On vs Risk-Off) using momentum, volatility, and
+                trend features. The model uses expanding window training to avoid look-ahead bias.
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Model metrics
+            st.markdown("### Model Performance")
 
             col1, col2, col3, col4 = st.columns(4)
+
             with col1:
-                st.metric("Accuracy Train", f"{ml_model.metrics['train_accuracy']:.1%}")
+                st.metric("Train Accuracy", format_percentage(ml_model.metrics['train_accuracy'], 1))
             with col2:
-                st.metric("Accuracy Test", f"{ml_model.metrics['test_accuracy']:.1%}")
+                st.metric("Test Accuracy", format_percentage(ml_model.metrics['test_accuracy'], 1))
             with col3:
-                st.metric("F1 Train", f"{ml_model.metrics['train_f1']:.1%}")
+                st.metric("Train F1 Score", format_percentage(ml_model.metrics['train_f1'], 1))
             with col4:
-                st.metric("F1 Test", f"{ml_model.metrics['test_f1']:.1%}")
+                st.metric("Test F1 Score", format_percentage(ml_model.metrics['test_f1'], 1))
 
-            st.markdown("""
-            <div class="explanation-box">
-            <strong>💡 Interprétation:</strong><br>
-            • <strong>Accuracy</strong>: % de prédictions correctes<br>
-            • <strong>F1 Score</strong>: Équilibre précision/rappel<br>
-            • Une accuracy de 55-60% est normale pour la prédiction de marchés
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Importance des features
-            st.subheader("Importance des features")
+            # Feature importance
+            st.markdown("### Feature Importance")
 
             importance = get_feature_importance(ml_model)
-            fig_imp = px.bar(
-                importance,
-                x='importance',
-                y='feature',
+
+            fig_imp = go.Figure()
+
+            fig_imp.add_trace(go.Bar(
+                x=importance['importance'],
+                y=importance['feature'],
                 orientation='h',
-                color='importance',
-                color_continuous_scale='Blues'
+                marker_color='#667eea'
+            ))
+
+            fig_imp.update_layout(
+                xaxis_title="Absolute Coefficient",
+                yaxis_title="",
+                height=350,
+                yaxis={'categoryorder': 'total ascending'},
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                showlegend=False,
+                margin=dict(l=120, r=40, t=20, b=40)
             )
-            fig_imp.update_layout(height=350, showlegend=False, yaxis={'categoryorder': 'total ascending'})
+
             st.plotly_chart(fig_imp, use_container_width=True)
 
-            st.markdown("""
-            <div class="explanation-box">
-            <strong>📊 Features utilisées:</strong><br>
-            • <strong>mom_Xm</strong>: Momentum sur X mois (tendance)<br>
-            • <strong>vol_Xd</strong>: Volatilité réalisée sur X jours<br>
-            • <strong>price_smaX</strong>: Position du prix vs moyenne mobile
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Signal actuel
-            st.subheader("Signal ML actuel")
+            # Current prediction
+            st.markdown("### Current Regime Prediction")
 
             from src.ml_regime import compute_features, predict_regime
-            features = compute_features(benchmark_daily.iloc[:, 0])
-            predictions = predict_regime(features, ml_model)
 
-            last_proba = predictions['probability'].iloc[-1]
-            last_regime = "RISK-ON" if last_proba > 0.5 else "RISK-OFF"
+            try:
+                features = compute_features(benchmark_daily.iloc[:, 0])
+                predictions = predict_regime(features, ml_model)
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Probabilité Risk-On", f"{last_proba:.1%}")
-            with col2:
-                if last_regime == "RISK-ON":
-                    st.success(f"Régime: {last_regime}")
-                else:
-                    st.error(f"Régime: {last_regime}")
+                last_proba = predictions['probability'].iloc[-1]
+                last_regime = "RISK-ON" if last_proba > 0.5 else "RISK-OFF"
 
-            # Graphique de la probabilité
-            fig_proba = go.Figure()
-            fig_proba.add_trace(go.Scatter(
-                x=predictions.index,
-                y=predictions['probability'],
-                fill='tozeroy',
-                fillcolor='rgba(31, 119, 180, 0.3)',
-                line=dict(color='#1f77b4'),
-                name='Probabilité Risk-On'
-            ))
-            fig_proba.add_hline(y=0.5, line_dash="dash", line_color="red",
-                               annotation_text="Seuil 50%")
-            fig_proba.update_layout(
-                yaxis_title="Probabilité",
-                height=300,
-                yaxis_tickformat='.0%'
-            )
-            st.plotly_chart(fig_proba, use_container_width=True)
+                col1, col2 = st.columns(2)
 
-    # TAB 5 (ou 4): Méthodologie
-    methodology_tab = tab5 if ml_model is not None else tab4
-    with methodology_tab:
-        st.header("Méthodologie")
+                with col1:
+                    st.metric("Risk-On Probability", format_percentage(last_proba, 1))
+                with col2:
+                    if last_regime == "RISK-ON":
+                        st.success(f"Current Regime: {last_regime}")
+                    else:
+                        st.error(f"Current Regime: {last_regime}")
 
-        st.markdown("""
-        ### 1. Le momentum en finance
+                # Probability chart
+                fig_proba = go.Figure()
 
-        L'effet momentum est l'une des anomalies les plus documentées en finance:
-        **les actions qui ont bien performé continuent de bien performer à moyen terme**.
+                fig_proba.add_trace(go.Scatter(
+                    x=predictions.index,
+                    y=predictions['probability'],
+                    fill='tozeroy',
+                    fillcolor='rgba(102, 126, 234, 0.2)',
+                    line=dict(color='#667eea', width=1.5),
+                    name='Risk-On Probability',
+                    hovertemplate='%{x}<br>Probability: %{y:.1%}<extra></extra>'
+                ))
 
-        Ce phénomène a été découvert par Jegadeesh & Titman (1993) et persiste depuis.
+                fig_proba.add_hline(
+                    y=0.5,
+                    line_dash="dash",
+                    line_color="#ef4444",
+                    annotation_text="Decision Threshold"
+                )
 
-        ### 2. Signal 12-1
+                fig_proba.update_layout(
+                    yaxis_title="Risk-On Probability",
+                    xaxis_title="",
+                    height=300,
+                    yaxis_tickformat='.0%',
+                    yaxis_range=[0, 1],
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    showlegend=False,
+                    yaxis=dict(gridcolor='#f0f0f0'),
+                    margin=dict(l=60, r=40, t=20, b=40)
+                )
 
-        Le signal **12-1** mesure le rendement sur 12 mois en excluant le dernier mois:
+                st.plotly_chart(fig_proba, use_container_width=True)
 
-        ```
-        Momentum = P(t-1) / P(t-12) - 1
-        ```
+            except Exception as e:
+                st.warning(f"Could not generate current predictions: {str(e)}")
 
-        **Pourquoi exclure le dernier mois?**
-        Le rendement du mois le plus récent montre souvent un effet de mean reversion
-        (retour à la moyenne) qui pollue le signal momentum.
+    # =========================================================================
+    # TAB: METHODOLOGY
+    # =========================================================================
+    with tab_method:
+        st.markdown("### Research Methodology")
 
-        ### 3. Construction du portefeuille
+        col1, col2 = st.columns([2, 1])
 
-        Chaque mois:
-        1. Calculer le momentum pour toutes les actions
-        2. Classer les actions par momentum
-        3. Acheter les top 10 (LONG)
-        4. Vendre à découvert les bottom 10 (SHORT)
-        5. Pondération equal-weight
+        with col1:
+            st.markdown("""
+            #### The Momentum Effect
 
-        ### 4. Filtre de régime
+            Cross-sectional momentum is one of the most robust anomalies in financial markets.
+            First documented by **Jegadeesh & Titman (1993)**, the effect shows that stocks
+            with strong recent performance tend to continue outperforming over the medium term.
 
-        Le filtre SMA200 est une règle simple:
-        - Si S&P 500 > Moyenne mobile 200 jours → **Risk-On** (exposition normale)
-        - Si S&P 500 < Moyenne mobile 200 jours → **Risk-Off** (exposition réduite)
+            This strategy implements a systematic approach to capturing this premium.
 
-        ### 5. Limites de l'étude
+            #### Signal Construction
 
-        - **Survivorship bias**: On utilise les constituants actuels du DJ30
-        - **Coûts de short**: Non modélisés
-        - **Slippage**: Non inclus
-        - **Capacité**: Limitée par la taille de l'univers
+            The **12-1 momentum signal** measures the return over the past 12 months,
+            excluding the most recent month:
 
-        ### Références
+            ```
+            Momentum(t) = Price(t-1) / Price(t-12) - 1
+            ```
 
-        - Jegadeesh & Titman (1993). *Returns to Buying Winners and Selling Losers*
-        - Faber (2007). *A Quantitative Approach to Tactical Asset Allocation*
-        """)
+            **Why skip the last month?** Short-term returns often exhibit mean reversion
+            (the "reversal effect"), which can contaminate the momentum signal.
 
-    # Footer
-    st.markdown("---")
+            #### Portfolio Construction
+
+            Each month, the strategy:
+            1. Computes momentum for all 30 Dow Jones stocks
+            2. Ranks stocks by momentum score
+            3. Goes **LONG** the top performers
+            4. Goes **SHORT** the bottom performers (optional)
+            5. Equal-weights all positions
+
+            #### Regime Filter
+
+            The SMA 200 filter is a classic trend-following rule:
+            - **Risk-On**: S&P 500 price > 200-day moving average
+            - **Risk-Off**: S&P 500 price < 200-day moving average
+
+            During Risk-Off periods, the strategy reduces exposure to mitigate drawdowns.
+            """)
+
+        with col2:
+            st.markdown("""
+            #### Key Parameters
+
+            | Parameter | Value |
+            |-----------|-------|
+            | Universe | Dow Jones 30 |
+            | Lookback | 12 months |
+            | Skip Period | 1 month |
+            | Rebalancing | Monthly |
+            | Weighting | Equal-weight |
+            | Costs | 10 bps/trade |
+
+            #### Limitations
+
+            - **Survivorship bias**: Uses current index constituents
+            - **Short costs**: Borrowing fees not modeled
+            - **Slippage**: Execution costs not included
+            - **Capacity**: Limited by small universe
+
+            #### References
+
+            - Jegadeesh, N., & Titman, S. (1993). *Returns to Buying Winners and Selling Losers*
+            - Faber, M. (2007). *A Quantitative Approach to Tactical Asset Allocation*
+            - Asness, C. et al. (2013). *Value and Momentum Everywhere*
+            """)
+
+    # =========================================================================
+    # FOOTER
+    # =========================================================================
     st.markdown("""
-    <div style='text-align: center; color: #666; font-size: 0.9rem;'>
-    Projet de recherche quantitative | Données: Yahoo Finance |
-    <a href="https://github.com" target="_blank">Code source</a>
+    <div class="footer">
+        <strong>Cross-Sectional Momentum Strategy</strong><br>
+        Quantitative Research Project | Data: Yahoo Finance<br>
+        <a href="https://github.com/alexcanc/Cross-Sectional-Momentum-actions-US" target="_blank">View Source Code</a>
     </div>
     """, unsafe_allow_html=True)
 
 
+# =============================================================================
+# ENTRY POINT
+# =============================================================================
 if __name__ == "__main__":
     main()

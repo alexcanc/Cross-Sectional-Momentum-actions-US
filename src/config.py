@@ -152,10 +152,6 @@ class Config:
             ]
 
 
-# Default configuration instance
-DEFAULT_CONFIG = Config()
-
-
 def get_config() -> Config:
-    """Return the default configuration."""
-    return DEFAULT_CONFIG
+    """Return a new configuration instance."""
+    return Config()
