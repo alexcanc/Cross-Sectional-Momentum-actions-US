@@ -412,6 +412,70 @@ def main():
     """, unsafe_allow_html=True)
 
     # =========================================================================
+    # CURRENT RECOMMENDATIONS (ACTIONABLE!)
+    # =========================================================================
+    st.markdown('<div class="section-header">🎯 Current Recommendations</div>', unsafe_allow_html=True)
+
+    # Calculate current momentum for recommendations
+    from src.signal import compute_momentum_signal
+    current_momentum = compute_momentum_signal(prices, config.MOMENTUM_LOOKBACK, config.MOMENTUM_SKIP)
+    valid_momentum = current_momentum.dropna(how='all')
+
+    if not valid_momentum.empty:
+        last_date = valid_momentum.index[-1]
+        latest_momentum = current_momentum.loc[last_date].dropna().sort_values(ascending=False)
+
+        # Determine current regime
+        current_regime = "Risk-On 🟢" if regime is None or regime.iloc[-1] == 1 else "Risk-Off 🔴"
+        exposure_pct = 100 if regime is None or regime.iloc[-1] == 1 else int(risk_off_exposure * 100)
+
+        # Display current status
+        col_regime, col_buy, col_sell = st.columns([1, 2, 2])
+
+        with col_regime:
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        padding: 20px; border-radius: 10px; text-align: center; color: white;">
+                <div style="font-size: 14px; opacity: 0.9;">Market Regime</div>
+                <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">{current_regime}</div>
+                <div style="font-size: 14px;">Exposure: {exposure_pct}%</div>
+                <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">as of {last_date.strftime('%B %Y')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_buy:
+            st.markdown("#### 📈 BUY These Stocks")
+            buy_stocks = latest_momentum.head(n_long)
+            for i, (ticker, mom) in enumerate(buy_stocks.items(), 1):
+                color = "#22c55e" if mom > 0 else "#ef4444"
+                st.markdown(f"""
+                <div style="display: flex; justify-content: space-between; padding: 8px 12px;
+                            background: #f8fafc; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid #22c55e;">
+                    <span><b>{i}. {ticker}</b></span>
+                    <span style="color: {color}; font-weight: 600;">{mom*100:+.1f}%</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with col_sell:
+            if n_short > 0:
+                st.markdown("#### 📉 SHORT These Stocks")
+                sell_stocks = latest_momentum.tail(n_short)
+                for i, (ticker, mom) in enumerate(sell_stocks.items(), 1):
+                    color = "#22c55e" if mom > 0 else "#ef4444"
+                    st.markdown(f"""
+                    <div style="display: flex; justify-content: space-between; padding: 8px 12px;
+                                background: #f8fafc; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid #ef4444;">
+                        <span><b>{i}. {ticker}</b></span>
+                        <span style="color: {color}; font-weight: 600;">{mom*100:+.1f}%</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown("#### ℹ️ Long-Only Mode")
+                st.info("Short selling disabled. Only buying winners.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # =========================================================================
     # KEY METRICS DISPLAY
     # =========================================================================
     st.markdown('<div class="section-header">Key Performance Metrics</div>', unsafe_allow_html=True)
