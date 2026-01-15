@@ -40,7 +40,7 @@ class BacktestResult:
 
 def compute_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """Compute simple returns from prices."""
-    return prices.pct_change()
+    return prices.pct_change(fill_method=None)
 
 
 def compute_turnover(
@@ -169,9 +169,9 @@ def run_backtest(
     # Step 7: Compute benchmark returns
     if benchmark_prices is not None:
         if isinstance(benchmark_prices, pd.DataFrame):
-            benchmark_returns = benchmark_prices.pct_change().iloc[:, 0]
+            benchmark_returns = benchmark_prices.pct_change(fill_method=None).iloc[:, 0]
         else:
-            benchmark_returns = benchmark_prices.pct_change()
+            benchmark_returns = benchmark_prices.pct_change(fill_method=None)
     else:
         # Use equal-weight universe as benchmark
         benchmark_returns = asset_returns.mean(axis=1)

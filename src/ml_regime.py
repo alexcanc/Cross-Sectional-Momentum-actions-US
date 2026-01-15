@@ -44,7 +44,7 @@ def compute_features(prices: pd.Series) -> pd.DataFrame:
     - price_sma50: Prix vs SMA50
     - price_sma200: Prix vs SMA200
     """
-    returns = prices.pct_change()
+    returns = prices.pct_change(fill_method=None)
 
     features = pd.DataFrame(index=prices.index)
 

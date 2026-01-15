@@ -227,7 +227,7 @@ def compute_regime_features(
     else:
         prices = benchmark_daily
 
-    returns = prices.pct_change()
+    returns = prices.pct_change(fill_method=None)
 
     features = pd.DataFrame(index=prices.index)
 
