@@ -433,15 +433,30 @@ def main():
         col_regime, col_buy, col_sell = st.columns([1, 2, 2])
 
         with col_regime:
+            # Color based on regime
+            if regime is None:
+                regime_color = "#6b7280"  # Gray for no filter
+                regime_text = "No Filter"
+                regime_icon = "⚪"
+            elif regime.iloc[-1] == 1:
+                regime_color = "#22c55e"  # Green for risk-on
+                regime_text = "Risk-On"
+                regime_icon = "🟢"
+            else:
+                regime_color = "#ef4444"  # Red for risk-off
+                regime_text = "Risk-Off"
+                regime_icon = "🔴"
+
             st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            <div style="background: linear-gradient(135deg, {regime_color}dd 0%, {regime_color}99 100%);
                         padding: 20px; border-radius: 10px; text-align: center; color: white;">
                 <div style="font-size: 14px; opacity: 0.9;">Market Regime</div>
-                <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">{current_regime}</div>
+                <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">{regime_text} {regime_icon}</div>
                 <div style="font-size: 14px;">Exposure: {exposure_pct}%</div>
                 <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">as of {last_date.strftime('%B %Y')}</div>
             </div>
             """, unsafe_allow_html=True)
+            st.caption("ℹ️ Regime depends on S&P 500 vs SMA200, not strategy params")
 
         with col_buy:
             st.markdown("#### 📈 BUY These Stocks")
