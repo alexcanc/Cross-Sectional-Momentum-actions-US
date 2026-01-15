@@ -28,7 +28,7 @@ st.set_page_config(
     page_title="Momentum Strategy | Quant Research",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # =============================================================================
@@ -259,41 +259,51 @@ def main():
     # SIDEBAR - Strategy Configuration
     # =========================================================================
     with st.sidebar:
-        st.markdown("## Strategy Configuration")
+        st.markdown("## ⚙️ Strategy Parameters")
+        st.caption("Adjust these to see how they affect performance")
 
-        st.markdown('<div class="sidebar-title">Signal Parameters</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">📊 Signal Parameters</div>', unsafe_allow_html=True)
         lookback = st.slider(
             "Lookback Period (months)",
             min_value=6, max_value=24, value=12,
-            help="Number of months to calculate momentum return"
+            help="How far back to look when measuring momentum. 12 months is the academic standard."
         )
         skip = st.slider(
             "Skip Period (months)",
             min_value=0, max_value=3, value=1,
-            help="Recent months to exclude (avoids short-term reversal)"
+            help="Skip the most recent month to avoid short-term reversal effect."
         )
 
         st.markdown("---")
-        st.markdown('<div class="sidebar-title">Portfolio Construction</div>', unsafe_allow_html=True)
-        n_long = st.slider("Long Positions", min_value=3, max_value=15, value=10)
-        n_short = st.slider("Short Positions", min_value=0, max_value=15, value=10)
+        st.markdown('<div class="sidebar-title">📈 Portfolio Construction</div>', unsafe_allow_html=True)
+        n_long = st.slider(
+            "Long Positions (buy winners)",
+            min_value=3, max_value=15, value=10,
+            help="Number of top-performing stocks to buy"
+        )
+        n_short = st.slider(
+            "Short Positions (sell losers)",
+            min_value=0, max_value=15, value=10,
+            help="Number of worst-performing stocks to short-sell. Set to 0 for long-only."
+        )
         portfolio_type = "long_short" if n_short > 0 else "long_only"
 
         st.markdown("---")
-        st.markdown('<div class="sidebar-title">Transaction Costs</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">💰 Transaction Costs</div>', unsafe_allow_html=True)
         transaction_cost = st.slider(
             "Cost (basis points)",
             min_value=0, max_value=50, value=10,
-            help="Round-trip transaction cost per trade"
+            help="Trading cost per transaction. 10 bps = 0.1% per trade. Realistic for large-cap stocks."
         )
 
         st.markdown("---")
-        st.markdown('<div class="sidebar-title">Regime Filter</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-title">🛡️ Regime Filter</div>', unsafe_allow_html=True)
+        st.caption("Reduce exposure during bear markets")
         regime_type = st.radio(
             "Filter Type",
             options=["None", "SMA 200 (Trend)", "Machine Learning"],
             index=1,
-            help="Market regime detection method"
+            help="When market is below its 200-day average, reduce exposure to protect capital."
         )
 
         if regime_type != "None":
@@ -389,6 +399,19 @@ def main():
         return
 
     # =========================================================================
+    # STRATEGY EXPLANATION
+    # =========================================================================
+    st.markdown("""
+    <div class="info-box">
+        <strong>What is this strategy?</strong> This is a <b>momentum strategy</b> that buys stocks
+        that have performed well recently (winners) and sells stocks that have performed poorly (losers).
+        The idea is simple: <i>trends tend to continue</i>. Stocks going up often keep going up,
+        and stocks going down often keep going down. Adjust the parameters in the sidebar to see
+        how different settings affect performance.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # =========================================================================
     # KEY METRICS DISPLAY
     # =========================================================================
     st.markdown('<div class="section-header">Key Performance Metrics</div>', unsafe_allow_html=True)
@@ -413,6 +436,18 @@ def main():
     with col5:
         color = "positive" if metrics.sortino_ratio > 1.5 else "neutral"
         st.markdown(render_metric_card(metrics.sortino_ratio, "Sortino Ratio", "ratio", color), unsafe_allow_html=True)
+
+    # Metrics explanation
+    with st.expander("📚 What do these metrics mean? (Click to expand)"):
+        st.markdown("""
+        | Metric | What it measures | Good value |
+        |--------|------------------|------------|
+        | **CAGR** | Average annual return (Compound Annual Growth Rate) | > 10% |
+        | **Sharpe Ratio** | Return per unit of risk. Higher = better risk-adjusted performance | > 1.0 |
+        | **Max Drawdown** | Largest peak-to-trough decline. How much you could lose at worst | > -20% |
+        | **Volatility** | How much returns fluctuate. Lower = more stable | < 15% |
+        | **Sortino Ratio** | Like Sharpe, but only penalizes downside risk | > 1.5 |
+        """)
 
     # =========================================================================
     # TABS
