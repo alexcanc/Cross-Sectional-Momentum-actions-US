@@ -323,6 +323,27 @@ def main():
             st.info("Please check your internet connection and try again.")
             return
 
+    # Validate data
+    if prices is None or prices.empty:
+        st.error("Failed to load price data. Please try refreshing the page.")
+        st.info("If the problem persists, the data source may be temporarily unavailable.")
+        return
+
+    if benchmark is None or benchmark.empty:
+        st.warning("Benchmark data unavailable. Using equal-weight universe as benchmark.")
+        benchmark = None
+
+    if benchmark_daily is None or benchmark_daily.empty:
+        st.warning("Daily benchmark data unavailable. Regime filter disabled.")
+        benchmark_daily = None
+
+    # Check minimum data requirement
+    min_months_required = lookback + 2
+    if len(prices) < min_months_required:
+        st.error(f"Insufficient data: {len(prices)} months available, but {min_months_required} months required for lookback={lookback}.")
+        st.info("Try reducing the lookback period in the sidebar.")
+        return
+
     # Configuration
     config = Config()
     config.MOMENTUM_LOOKBACK = lookback
@@ -337,15 +358,22 @@ def main():
     regime = None
     ml_model = None
 
-    if regime_type == "SMA 200 (Trend)":
-        regime = compute_regime_filter(benchmark_daily, config)
-    elif regime_type == "Machine Learning":
-        with st.spinner("Training ML model..."):
+    if regime_type != "None" and benchmark_daily is not None:
+        if regime_type == "SMA 200 (Trend)":
             try:
-                regime, ml_model = compute_ml_regime_signal(benchmark_daily, train_end=ml_train_end)
-            except Exception as e:
-                st.warning(f"ML model training failed: {str(e)}. Using SMA 200 as fallback.")
                 regime = compute_regime_filter(benchmark_daily, config)
+            except Exception as e:
+                st.warning(f"Regime filter failed: {str(e)}. Running without regime filter.")
+        elif regime_type == "Machine Learning":
+            with st.spinner("Training ML model..."):
+                try:
+                    regime, ml_model = compute_ml_regime_signal(benchmark_daily, train_end=ml_train_end)
+                except Exception as e:
+                    st.warning(f"ML model training failed: {str(e)}. Using SMA 200 as fallback.")
+                    try:
+                        regime = compute_regime_filter(benchmark_daily, config)
+                    except Exception:
+                        pass
 
     # Backtest
     try:
@@ -518,30 +546,26 @@ def main():
 
         # Calculate momentum
         momentum = compute_momentum_signal(prices, lookback, skip)
-        last_date = momentum.dropna().index[-1]
-        last_momentum = momentum.loc[last_date].sort_values(ascending=False)
+
+        # Get valid momentum data (rows where at least one stock has data)
+        valid_momentum = momentum.dropna(how='all')
+
+        if valid_momentum.empty:
+            st.warning("Not enough data to compute momentum signal. Try reducing the lookback period.")
+            last_momentum = pd.Series(dtype=float)
+            last_date = None
+        else:
+            last_date = valid_momentum.index[-1]
+            last_momentum = momentum.loc[last_date].dropna().sort_values(ascending=False)
 
         col1, col2 = st.columns(2)
 
-        with col1:
-            st.markdown("#### Long Positions (Winners)")
-            long_stocks = last_momentum.head(n_long)
+        if not last_momentum.empty:
+            with col1:
+                st.markdown("#### Long Positions (Winners)")
+                long_stocks = last_momentum.head(n_long)
 
-            for ticker, mom in long_stocks.items():
-                color_class = "positive" if mom > 0 else "negative"
-                st.markdown(f"""
-                <div class="stock-item">
-                    <span class="stock-ticker">{ticker}</span>
-                    <span class="stock-momentum-{color_class}">{format_percentage(mom)}</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-        with col2:
-            if n_short > 0:
-                st.markdown("#### Short Positions (Losers)")
-                short_stocks = last_momentum.tail(n_short)
-
-                for ticker, mom in short_stocks.items():
+                for ticker, mom in long_stocks.items():
                     color_class = "positive" if mom > 0 else "negative"
                     st.markdown(f"""
                     <div class="stock-item">
@@ -549,38 +573,54 @@ def main():
                         <span class="stock-momentum-{color_class}">{format_percentage(mom)}</span>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.markdown("#### Long-Only Strategy")
-                st.info("Short selling is disabled. The strategy only takes long positions in high-momentum stocks.")
+
+            with col2:
+                if n_short > 0:
+                    st.markdown("#### Short Positions (Losers)")
+                    short_stocks = last_momentum.tail(n_short)
+
+                    for ticker, mom in short_stocks.items():
+                        color_class = "positive" if mom > 0 else "negative"
+                        st.markdown(f"""
+                        <div class="stock-item">
+                            <span class="stock-ticker">{ticker}</span>
+                            <span class="stock-momentum-{color_class}">{format_percentage(mom)}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("#### Long-Only Strategy")
+                    st.info("Short selling is disabled. The strategy only takes long positions in high-momentum stocks.")
 
         # Distribution chart
-        st.markdown("### Momentum Distribution")
+        if not last_momentum.empty:
+            st.markdown("### Momentum Distribution")
 
-        fig3 = go.Figure()
+            fig3 = go.Figure()
 
-        fig3.add_trace(go.Histogram(
-            x=last_momentum.values,
-            nbinsx=15,
-            marker_color='#667eea',
-            opacity=0.8,
-            hovertemplate='Momentum: %{x:.1%}<br>Count: %{y}<extra></extra>'
-        ))
+            fig3.add_trace(go.Histogram(
+                x=last_momentum.values,
+                nbinsx=15,
+                marker_color='#667eea',
+                opacity=0.8,
+                hovertemplate='Momentum: %{x:.1%}<br>Count: %{y}<extra></extra>'
+            ))
 
-        fig3.update_layout(
-            xaxis_title="Momentum Score",
-            yaxis_title="Number of Stocks",
-            height=300,
-            xaxis_tickformat='.0%',
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            showlegend=False,
-            yaxis=dict(gridcolor='#f0f0f0'),
-            margin=dict(l=60, r=40, t=20, b=40)
-        )
+            fig3.update_layout(
+                xaxis_title="Momentum Score",
+                yaxis_title="Number of Stocks",
+                height=300,
+                xaxis_tickformat='.0%',
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                showlegend=False,
+                yaxis=dict(gridcolor='#f0f0f0'),
+                margin=dict(l=60, r=40, t=20, b=40)
+            )
 
-        st.plotly_chart(fig3, use_container_width=True)
+            st.plotly_chart(fig3, use_container_width=True)
 
-        st.caption(f"Data as of {last_date.strftime('%B %Y')}")
+            if last_date is not None:
+                st.caption(f"Data as of {last_date.strftime('%B %Y')}")
 
     # =========================================================================
     # TAB 3: RISK METRICS

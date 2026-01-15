@@ -72,21 +72,69 @@ def load_universe_data(
     tickers = config.DOW_JONES_30.copy()
 
     # Download daily data
-    data = yf.download(
-        tickers=tickers,
-        start=config.START_DATE,
-        end=config.END_DATE,
-        auto_adjust=True,  # Use adjusted prices
-        progress=verbose,
-    )
+    try:
+        data = yf.download(
+            tickers=tickers,
+            start=config.START_DATE,
+            end=config.END_DATE,
+            auto_adjust=True,  # Use adjusted prices
+            progress=verbose,
+            group_by='ticker',  # Group by ticker for consistent format
+        )
+    except Exception as e:
+        if verbose:
+            print(f"Error downloading data: {e}")
+        # Return empty DataFrame
+        return pd.DataFrame()
 
-    # Extract Close prices (already adjusted due to auto_adjust=True)
+    # Handle empty data
+    if data.empty:
+        if verbose:
+            print("Warning: No data downloaded")
+        return pd.DataFrame()
+
+    # Extract Close prices - handle different yfinance output formats
     if isinstance(data.columns, pd.MultiIndex):
-        prices = data["Close"]
+        # Multi-ticker case with MultiIndex columns
+        # Try to get Close prices
+        try:
+            # New yfinance format: (ticker, field)
+            if data.columns.nlevels == 2:
+                # Check if first level is tickers or fields
+                first_level = data.columns.get_level_values(0).unique()
+                if 'Close' in first_level:
+                    prices = data["Close"]
+                else:
+                    # Format is (ticker, field)
+                    prices = data.xs('Close', axis=1, level=1)
+            else:
+                prices = data["Close"]
+        except KeyError:
+            # Fallback: try to extract Close from each ticker
+            prices_dict = {}
+            for ticker in tickers:
+                try:
+                    if ticker in data.columns.get_level_values(0):
+                        prices_dict[ticker] = data[ticker]["Close"]
+                    elif (ticker, "Close") in data.columns:
+                        prices_dict[ticker] = data[(ticker, "Close")]
+                except (KeyError, TypeError):
+                    continue
+            prices = pd.DataFrame(prices_dict)
     else:
         # Single ticker case
-        prices = data[["Close"]]
-        prices.columns = tickers
+        if "Close" in data.columns:
+            prices = data[["Close"]]
+            prices.columns = tickers[:1]
+        else:
+            prices = data
+            prices.columns = tickers[:len(data.columns)]
+
+    # Ensure we have data
+    if prices.empty:
+        if verbose:
+            print("Warning: Could not extract price data")
+        return pd.DataFrame()
 
     # Resample to monthly frequency (end of month)
     prices = prices.resample("ME").last()
